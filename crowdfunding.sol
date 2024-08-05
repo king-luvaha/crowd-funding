@@ -19,9 +19,9 @@ contract CrowdFunding {
     uint256 public numberOfCampaigns = 0;
 
     function createCampaign(address _owner, string memory _title, string memory _description, uint256 _target, uint256 _deadline, string memory _image) public returns (uint256) {
-        Campaign storage campaign = campaigns[numberOfCampaigns];
+        require(_deadline > block.timestamp, "The deadline should be a date in the future.");
 
-        require(campaign.deadline < block.timestamp, "The deadline should be a date in the future.");
+        Campaign storage campaign = campaigns[numberOfCampaigns];
 
         campaign.owner = _owner;
         campaign.title = _title;
@@ -44,11 +44,11 @@ contract CrowdFunding {
         campaign.donators.push(msg.sender);
         campaign.donations.push(amount);
 
-        (bool sent,) = payable(campaign.owner).call{value: amount}("");
+        // Update the state before transferring funds
+        campaign.amountCollected += amount;
 
-        if(sent) {
-            campaign.amountCollected = campaign.amountCollected + amount;
-        }
+        (bool sent,) = payable(campaign.owner).call{value: amount}("");
+        require(sent, "Failed to send Ether");
     }
 
     function getDonators(uint256 _id) view public returns (address[] memory, uint256[] memory) {
@@ -60,7 +60,6 @@ contract CrowdFunding {
 
         for(uint i = 0; i < numberOfCampaigns; i++) {
             Campaign storage item = campaigns[i];
-
             allCampaigns[i] = item;
         }
 
